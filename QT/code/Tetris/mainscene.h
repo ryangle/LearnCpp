@@ -28,7 +28,6 @@ struct block_point
 {
     int pos_x;
     int pos_y;
-    //    block_point(int x,int y):pos_x(x),pos_y(y){}
 };
 class MainScene : public QWidget
 {
@@ -40,9 +39,6 @@ public:
 
     virtual void paintEvent(QPaintEvent *event);
     virtual void keyPressEvent(QKeyEvent *event); //键盘响应
-
-    QTimer m_timer;
-    QTimer m_timerFresh;
 
 public:
     void InitGame(); //初始化
@@ -68,5 +64,8 @@ private:
     int paint_timer; //渲染刷新计时器
     int speed_ms; //下落时间间隔
     int refresh_ms; //刷新时间间隔
+
+    QTimer timerBlockMove;
+    QTimer timerRefresh;
 };
 #endif // MAINSCENE_H

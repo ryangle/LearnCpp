@@ -80,10 +80,10 @@ MainScene::MainScene(QWidget *parent)
 
     setFixedSize(AREA_COL*BLOCK_SIZE+MARGIN*4+4*BLOCK_SIZE,AREA_ROW*BLOCK_SIZE+MARGIN*2);
 
-    connect(&m_timer,&QTimer::timeout,[=](){
+    connect(&timerBlockMove,&QTimer::timeout,[=](){
         BlockMove(DOWN);
     });
-    connect(&m_timerFresh,&QTimer::timeout,[=](){
+    connect(&timerRefresh,&QTimer::timeout,[=](){
         repaint();
     });
     InitGame();
@@ -100,6 +100,12 @@ void MainScene::paintEvent(QPaintEvent *event)
     //画游戏场景边框
     painter.setBrush(QBrush(Qt::white,Qt::SolidPattern));
     painter.drawRect(MARGIN,MARGIN,AREA_COL*BLOCK_SIZE,AREA_ROW*BLOCK_SIZE);
+
+    for(int i = 0;i<AREA_ROW;i++){
+        for (int j=0;j<AREA_COL ;j++ ) {
+            painter.drawRect(MARGIN+j*BLOCK_SIZE,MARGIN+i*BLOCK_SIZE,BLOCK_SIZE,BLOCK_SIZE);
+        }
+    }
     //画方块预告
     painter.setBrush(QBrush(Qt::blue,Qt::SolidPattern));
     for(int i=0;i<4;i++)
@@ -109,6 +115,7 @@ void MainScene::paintEvent(QPaintEvent *event)
             if(next_block[i][j]==1)
             {
                 painter.drawRect(MARGIN*3+AREA_COL*BLOCK_SIZE+j*BLOCK_SIZE,MARGIN+i*BLOCK_SIZE,BLOCK_SIZE,BLOCK_SIZE);
+                qDebug() << "x:"<<MARGIN*3+AREA_COL*BLOCK_SIZE+j*BLOCK_SIZE;
             }
         }
     }
@@ -286,9 +293,9 @@ void MainScene::ResetBlock()
 void MainScene::StartGame()
 {
     //开启游戏timer
-    m_timer.start(speed_ms);
-    //paint_timer=startTimer(refresh_ms); //开启界面刷新timer
-    m_timerFresh.start(refresh_ms);
+    timerBlockMove.start(speed_ms);
+    //开启界面刷新timer
+    timerRefresh.start(refresh_ms);
     //产生初始下一个方块
     int block_id=rand()%7;
     CreateBlock(next_block,block_id);
