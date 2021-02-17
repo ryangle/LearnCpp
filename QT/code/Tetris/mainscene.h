@@ -3,6 +3,7 @@
 
 #include <QWidget>
 #include <QTimer>
+#include <QPushButton>
 #include "config.h"
 //方向
 enum Direction
@@ -52,20 +53,21 @@ public:
     void GetBorder(int block[4][4],Border &border); //计算边界
     void ConvertStable(int x,int y); //转换为稳定方块
     bool IsCollide(int x,int y,Direction dir); //判断是否会碰撞
+
 private:
     int game_area[AREA_ROW][AREA_COL]; //场景区域，1表示活动的方块，2表示稳定的方块，0表示空
-    block_point block_pos; //当前方块坐标
+    block_point cur_blockPos; //当前方块坐标
     int cur_block[4][4]; //当前方块形状
     Border cur_border; //当前方块边界
     int next_block[4][4]; //下一个方块形状
-    bool isStable; //当前方块是否稳定了
     int score;  //游戏分数
-    int game_timer; //方块下落计时器
-    int paint_timer; //渲染刷新计时器
     int speed_ms; //下落时间间隔
     int refresh_ms; //刷新时间间隔
 
     QTimer timerBlockMove;
     QTimer timerRefresh;
+
+    QPushButton *startBtn;
+    QPushButton *stopBtn;
 };
 #endif // MAINSCENE_H

@@ -78,6 +78,14 @@ MainScene::MainScene(QWidget *parent)
     : QWidget(parent)
 {
 
+    startBtn = new QPushButton("开始",this);
+    startBtn->move(MARGIN*6+AREA_COL*BLOCK_SIZE,MARGIN*2+14*BLOCK_SIZE);
+    connect(startBtn,&QPushButton::clicked,this,&MainScene::StartGame);
+
+    stopBtn = new QPushButton("停止",this);
+    stopBtn->move(MARGIN*6+AREA_COL*BLOCK_SIZE,MARGIN*2+15*BLOCK_SIZE);
+    connect(stopBtn,&QPushButton::clicked,this,&MainScene::GameOver);
+
     setFixedSize(AREA_COL*BLOCK_SIZE+MARGIN*4+4*BLOCK_SIZE,AREA_ROW*BLOCK_SIZE+MARGIN*2);
 
     connect(&timerBlockMove,&QTimer::timeout,[=](){
@@ -101,13 +109,15 @@ void MainScene::paintEvent(QPaintEvent *event)
     painter.setBrush(QBrush(Qt::white,Qt::SolidPattern));
     painter.drawRect(MARGIN,MARGIN,AREA_COL*BLOCK_SIZE,AREA_ROW*BLOCK_SIZE);
 
+    //画网格
+    painter.setPen(Qt::darkYellow);
     for(int i = 0;i<AREA_ROW;i++){
         for (int j=0;j<AREA_COL ;j++ ) {
             painter.drawRect(MARGIN+j*BLOCK_SIZE,MARGIN+i*BLOCK_SIZE,BLOCK_SIZE,BLOCK_SIZE);
         }
     }
     //画方块预告
-    painter.setBrush(QBrush(Qt::blue,Qt::SolidPattern));
+    painter.setBrush(QBrush(Qt::gray,Qt::SolidPattern));
     for(int i=0;i<4;i++)
     {
         for(int j=0;j<4;j++)
@@ -120,11 +130,12 @@ void MainScene::paintEvent(QPaintEvent *event)
         }
     }
     //绘制得分
-    painter.setPen(Qt::black);
+    painter.setPen(Qt::darkCyan);
     painter.setFont(QFont("Arial",14));
-    painter.drawText(QRect(MARGIN*3+AREA_COL*BLOCK_SIZE,MARGIN*2+4*BLOCK_SIZE,BLOCK_SIZE*4,BLOCK_SIZE*4),Qt::AlignCenter,"score: "+QString::number(score));
+    painter.drawText(QRect(MARGIN*3+AREA_COL*BLOCK_SIZE,MARGIN*2+4*BLOCK_SIZE,BLOCK_SIZE*4,BLOCK_SIZE*4),Qt::AlignCenter,"得分: "+QString::number(score));
 
 
+    painter.setPen(Qt::black);
     //绘制下落方块和稳定方块,注意方块边线的颜色是根据setPen来的，默认黑色
     for(int i=0;i<AREA_ROW;i++)
     {
@@ -133,13 +144,13 @@ void MainScene::paintEvent(QPaintEvent *event)
             //绘制活动方块
             if(game_area[i][j]==1)
             {
-                painter.setBrush(QBrush(Qt::red,Qt::SolidPattern));
+                painter.setBrush(QBrush(Qt::lightGray,Qt::SolidPattern));
                 painter.drawRect(j*BLOCK_SIZE+MARGIN,i*BLOCK_SIZE+MARGIN,BLOCK_SIZE,BLOCK_SIZE);
             }
             //绘制稳定方块
             else if(game_area[i][j]==2)
             {
-                painter.setBrush(QBrush(Qt::green,Qt::SolidPattern));
+                painter.setBrush(QBrush(Qt::darkGray,Qt::SolidPattern));
                 painter.drawRect(j*BLOCK_SIZE+MARGIN,i*BLOCK_SIZE+MARGIN,BLOCK_SIZE,BLOCK_SIZE);
             }
         }
@@ -270,7 +281,7 @@ void MainScene::InitGame()
     score=0;
 
     //开始游戏
-    StartGame();
+    //StartGame();
 }
 
 void MainScene::ResetBlock()
@@ -287,7 +298,7 @@ void MainScene::ResetBlock()
     block_point start_point;
     start_point.pos_x=AREA_COL/2-2;
     start_point.pos_y=0;
-    block_pos=start_point;
+    cur_blockPos=start_point;
 }
 
 void MainScene::StartGame()
@@ -305,8 +316,8 @@ void MainScene::StartGame()
 void MainScene::GameOver()
 {
     //游戏结束停止计时器
-    killTimer(game_timer);
-    killTimer(paint_timer);
+    timerBlockMove.stop();
+    timerRefresh.stop();
     QMessageBox::information(this,"failed","game over");
 
 }
@@ -387,7 +398,7 @@ void MainScene::BlockMove(Direction dir)
 {
     switch (dir) {
     case UP:
-        if(IsCollide(block_pos.pos_x,block_pos.pos_y,UP))
+        if(IsCollide(cur_blockPos.pos_x,cur_blockPos.pos_y,UP))
         {
             break;
         }
@@ -398,7 +409,7 @@ void MainScene::BlockMove(Direction dir)
         {
             for(int j=0;j<4;j++)
             {
-                game_area[block_pos.pos_y+i][block_pos.pos_x+j]=cur_block[i][j];
+                game_area[cur_blockPos.pos_y+i][cur_blockPos.pos_x+j]=cur_block[i][j];
             }
         }
         //重新计算边界
@@ -406,110 +417,110 @@ void MainScene::BlockMove(Direction dir)
         break;
     case DOWN:
         //方块到达边界则不再移动
-        if(block_pos.pos_y+cur_border.dbound==AREA_ROW-1)
+        if(cur_blockPos.pos_y+cur_border.dbound==AREA_ROW-1)
         {
-            ConvertStable(block_pos.pos_x,block_pos.pos_y);
+            ConvertStable(cur_blockPos.pos_x,cur_blockPos.pos_y);
             ResetBlock();
             break;
         }
         //碰撞检测，只计算上下左右边界，先尝试走一格，如果碰撞则稳定方块后跳出
-        if(IsCollide(block_pos.pos_x,block_pos.pos_y,DOWN))
+        if(IsCollide(cur_blockPos.pos_x,cur_blockPos.pos_y,DOWN))
         {
             //只有最终不能下落才转成稳定方块
-            ConvertStable(block_pos.pos_x,block_pos.pos_y);
+            ConvertStable(cur_blockPos.pos_x,cur_blockPos.pos_y);
             ResetBlock();
             break;
         }
         //恢复方块上场景,为了清除移动过程中的方块残留
         for(int j=cur_border.lbound;j<=cur_border.rbound;j++)
         {
-            game_area[block_pos.pos_y][block_pos.pos_x+j]=0;
+            game_area[cur_blockPos.pos_y][cur_blockPos.pos_x+j]=0;
         }
         //没有碰撞则下落一格
-        block_pos.pos_y+=1;
+        cur_blockPos.pos_y+=1;
         //方块下降一格，拷贝到场景,注意左右边界
         for(int i=0;i<4;i++) //必须是0到4而不是边界索引，考虑到旋转后边界重新计算
         {
             for(int j=cur_border.lbound;j<=cur_border.rbound;j++)
             {
-                if(block_pos.pos_y+i<=AREA_ROW-1&&game_area[block_pos.pos_y+i][block_pos.pos_x+j]!=2) //注意场景数组不越界,而且不会擦出稳定的方块
+                if(cur_blockPos.pos_y+i<=AREA_ROW-1&&game_area[cur_blockPos.pos_y+i][cur_blockPos.pos_x+j]!=2) //注意场景数组不越界,而且不会擦出稳定的方块
                 {
-                    game_area[block_pos.pos_y+i][block_pos.pos_x+j]=cur_block[i][j];
+                    game_area[cur_blockPos.pos_y+i][cur_blockPos.pos_x+j]=cur_block[i][j];
                 }
             }
         }
         break;
     case LEFT:
         //到左边界或者碰撞不再往左
-        if(block_pos.pos_x+cur_border.lbound==0||IsCollide(block_pos.pos_x,block_pos.pos_y,LEFT))
+        if(cur_blockPos.pos_x+cur_border.lbound==0||IsCollide(cur_blockPos.pos_x,cur_blockPos.pos_y,LEFT))
         {
             break;
         }
         //恢复方块右场景,为了清除移动过程中的方块残留
         for(int i=cur_border.ubound;i<=cur_border.dbound;i++)
         {
-            game_area[block_pos.pos_y+i][block_pos.pos_x+3]=0;
+            game_area[cur_blockPos.pos_y+i][cur_blockPos.pos_x+3]=0;
         }
-        block_pos.pos_x-=1;
+        cur_blockPos.pos_x-=1;
         //方块左移一格，拷贝到场景
         for(int i=cur_border.ubound;i<=cur_border.dbound;i++)
         {
             for(int j=0;j<4;j++)
             {
-                if(block_pos.pos_x+j>=0&&game_area[block_pos.pos_y+i][block_pos.pos_x+j]!=2) //注意场景数组不越界
+                if(cur_blockPos.pos_x+j>=0&&game_area[cur_blockPos.pos_y+i][cur_blockPos.pos_x+j]!=2) //注意场景数组不越界
                 {
-                    game_area[block_pos.pos_y+i][block_pos.pos_x+j]=cur_block[i][j];
+                    game_area[cur_blockPos.pos_y+i][cur_blockPos.pos_x+j]=cur_block[i][j];
                 }
             }
         }
         break;
     case RIGHT:
-        if(block_pos.pos_x+cur_border.rbound==AREA_COL-1||IsCollide(block_pos.pos_x,block_pos.pos_y,RIGHT))
+        if(cur_blockPos.pos_x+cur_border.rbound==AREA_COL-1||IsCollide(cur_blockPos.pos_x,cur_blockPos.pos_y,RIGHT))
         {
             break;
         }
         //恢复方块左场景,为了清除移动过程中的方块残留
         for(int i=cur_border.ubound;i<=cur_border.dbound;i++)
         {
-            game_area[block_pos.pos_y+i][block_pos.pos_x]=0;
+            game_area[cur_blockPos.pos_y+i][cur_blockPos.pos_x]=0;
         }
-        block_pos.pos_x+=1;
+        cur_blockPos.pos_x+=1;
         //方块右移一格，拷贝到场景
         for(int i=cur_border.ubound;i<=cur_border.dbound;i++)
         {
             for(int j=0;j<4;j++)
             {
-                if(block_pos.pos_x+j<=AREA_COL-1&&game_area[block_pos.pos_y+i][block_pos.pos_x+j]!=2) //注意场景数组不越界
+                if(cur_blockPos.pos_x+j<=AREA_COL-1&&game_area[cur_blockPos.pos_y+i][cur_blockPos.pos_x+j]!=2) //注意场景数组不越界
                 {
-                    game_area[block_pos.pos_y+i][block_pos.pos_x+j]=cur_block[i][j];
+                    game_area[cur_blockPos.pos_y+i][cur_blockPos.pos_x+j]=cur_block[i][j];
                 }
             }
         }
         break;
     case SPACE: //一次到底
         //一格一格下移，直到不能下移
-        while(block_pos.pos_y+cur_border.dbound<AREA_ROW-1&&!IsCollide(block_pos.pos_x,block_pos.pos_y,DOWN))
+        while(cur_blockPos.pos_y+cur_border.dbound<AREA_ROW-1&&!IsCollide(cur_blockPos.pos_x,cur_blockPos.pos_y,DOWN))
         {
             //恢复方块上场景,为了清除移动过程中的方块残留
             for(int j=cur_border.lbound;j<=cur_border.rbound;j++)
             {
-                game_area[block_pos.pos_y][block_pos.pos_x+j]=0;
+                game_area[cur_blockPos.pos_y][cur_blockPos.pos_x+j]=0;
             }
             //没有碰撞则下落一格
-            block_pos.pos_y+=1;
+            cur_blockPos.pos_y+=1;
             //方块下降一格，拷贝到场景,注意左右边界
             for(int i=0;i<4;i++) //必须是0到4
             {
                 for(int j=cur_border.lbound;j<=cur_border.rbound;j++)
                 {
-                    if(block_pos.pos_y+i<=AREA_ROW-1&&game_area[block_pos.pos_y+i][block_pos.pos_x+j]!=2) //注意场景数组不越界,而且不会擦出稳定的方块
+                    if(cur_blockPos.pos_y+i<=AREA_ROW-1&&game_area[cur_blockPos.pos_y+i][cur_blockPos.pos_x+j]!=2) //注意场景数组不越界,而且不会擦出稳定的方块
                     {
-                        game_area[block_pos.pos_y+i][block_pos.pos_x+j]=cur_block[i][j];
+                        game_area[cur_blockPos.pos_y+i][cur_blockPos.pos_x+j]=cur_block[i][j];
                     }
                 }
             }
         }
-        ConvertStable(block_pos.pos_x,block_pos.pos_y);
+        ConvertStable(cur_blockPos.pos_x,cur_blockPos.pos_y);
         ResetBlock();
         break;
     default:
